@@ -75,6 +75,12 @@ class SnippetCastStore {
   project = $state<Project>(loadFromStorage() ?? defaultProject())
   currentIndex = $state(0)
   isPlaying = $state(false)
+  /**
+   * Whether the next canvas render should morph (navigation/playback) or snap
+   * (code edit). Set synchronously by each action so the preview never has to
+   * infer it from effect ordering.
+   */
+  animateNext = $state(false)
   /** Bumped to cancel an in-flight playback loop. */
   private playToken = 0
 
@@ -92,6 +98,7 @@ class SnippetCastStore {
 
   selectStep(index: number) {
     if (index < 0 || index >= this.project.steps.length) return
+    this.animateNext = true
     this.currentIndex = index
   }
 
@@ -100,6 +107,7 @@ class SnippetCastStore {
     const base = this.currentStep
     const step: Step = { id: uid(), code: base?.code ?? '', durationMs: base?.durationMs ?? 1500 }
     const at = this.currentIndex + 1
+    this.animateNext = false
     this.project.steps.splice(at, 0, step)
     this.currentIndex = at
   }
@@ -107,24 +115,28 @@ class SnippetCastStore {
   duplicateStep(index: number) {
     const src = this.project.steps[index]
     if (!src) return
+    this.animateNext = false
     this.project.steps.splice(index + 1, 0, { ...src, id: uid() })
     this.currentIndex = index + 1
   }
 
   deleteStep(index: number) {
     if (this.project.steps.length <= 1) return
+    this.animateNext = false
     this.project.steps.splice(index, 1)
     this.currentIndex = Math.min(this.currentIndex, this.project.steps.length - 1)
   }
 
   reorderStep(from: number, to: number) {
     if (to < 0 || to >= this.project.steps.length) return
+    this.animateNext = true
     const [moved] = this.project.steps.splice(from, 1)
     this.project.steps.splice(to, 0, moved)
     this.currentIndex = to
   }
 
   updateStepCode(code: string) {
+    this.animateNext = false
     if (this.currentStep) this.currentStep.code = code
   }
 
@@ -142,6 +154,7 @@ class SnippetCastStore {
 
   loadProject(project: Project) {
     project.settings = { ...DEFAULT_SETTINGS, ...project.settings }
+    this.animateNext = false
     this.project = project
     this.currentIndex = 0
     this.isPlaying = false
@@ -156,10 +169,12 @@ class SnippetCastStore {
     if (this.steps.length === 0) return
     this.isPlaying = true
     const token = ++this.playToken
+    this.animateNext = false
     this.currentIndex = 0
     await wait(this.settings.transitionMs + this.steps[0].durationMs)
     for (let i = 1; i < this.steps.length; i++) {
       if (token !== this.playToken) return
+      this.animateNext = true
       this.currentIndex = i
       await wait(this.settings.transitionMs + this.steps[i].durationMs)
     }

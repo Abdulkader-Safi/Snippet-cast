@@ -6,20 +6,10 @@
 
   const s = $derived(store.settings)
 
-  // Decide whether the next render animates. Navigation/playback (index change)
-  // morphs; editing the current frame's text snaps instantly.
-  let animate = $state(false)
-  let lastIndex = store.currentIndex
-  let lastCode = store.currentStep.code
-
-  $effect(() => {
-    const idx = store.currentIndex
-    const code = store.currentStep.code
-    if (idx !== lastIndex) animate = true
-    else if (code !== lastCode) animate = false
-    lastIndex = idx
-    lastCode = code
-  })
+  // The store decides morph-vs-snap synchronously per action, so reading it here
+  // avoids any cross-component effect-ordering race (which used to make the very
+  // first transition snap instead of morph).
+  const animate = $derived(store.animateNext)
 </script>
 
 <div class="snip-canvas" style:background={backgroundCss(s.background)}>
