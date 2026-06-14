@@ -20,8 +20,12 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.1",
+    "gifenc": "^1.0.3",
+    "modern-screenshot": "^4.7.0",
+    "mp4-muxer": "^5.2.2",
     "shiki": "^4.2.0",
     "shiki-magic-move": "^1.4.0",
-    "tailwindcss": "^4.3.1"
+    "tailwindcss": "^4.3.1",
+    "webm-muxer": "^5.1.4"
   }
 }

@@ -19,6 +19,25 @@ frame. Built with Svelte 5, TypeScript, Vite, and Tailwind v4.
   numbers, font size, padding, transition speed, and per-step hold.
 - **Persistence:** the project auto-saves to `localStorage`. `Export JSON` downloads
   the project; `Import` loads one back.
+- **Export to video:** `Export Video` renders the morph to a real video file. Pick a
+  format (MP4 / WebM / GIF), an aspect ratio (16:9, 16:10, 9:16, 1:1, 4:5), and a frame
+  rate (30/60). A progress bar tracks rendering.
+
+## How export works
+
+The morph is driven by CSS transitions, which would normally be impossible to capture
+frame-accurately. The trick: kick off each transition, grab the resulting `Animation`
+objects (CSS transitions are exposed via the Web Animations API), pause them, then walk
+`currentTime` in fixed fps steps. At each tick the hidden, full-resolution export stage
+is rasterized with `modern-screenshot` into one frame. Frames stream into an encoder:
+
+- **MP4** — WebCodecs `VideoEncoder` (H.264) + `mp4-muxer`
+- **WebM** — WebCodecs `VideoEncoder` (VP9) + `webm-muxer`
+- **GIF** — `gifenc`, capped at 15fps / 800px, with hold frames merged into one frame
+  plus a longer delay to keep the file small
+
+MP4/WebM need WebCodecs (Chrome); GIF works everywhere. The export code lives in
+`src/lib/export/` (`captureFrames.ts`, `sinks.ts`, `exportVideo.ts`, `ExportStage.svelte`).
 
 ## Develop
 
@@ -29,8 +48,3 @@ bun run check    # svelte-check + tsc
 bun run build    # production build
 ```
 
-## Roadmap
-
-- **Export to video** (not yet built): drive playback deterministically frame by frame,
-  snapshot the canvas with `modern-screenshot`, and encode with the WebCodecs
-  `VideoEncoder` + `mp4-muxer` (MediaRecorder fallback).

@@ -1,8 +1,10 @@
 <script lang="ts">
   import { store } from '../store.svelte'
   import type { Project } from '../types'
+  import ExportDialog from './ExportDialog.svelte'
 
   let fileInput = $state<HTMLInputElement>()
+  let exportOpen = $state(false)
 
   function exportJson() {
     const data = JSON.stringify(store.project, null, 2)
@@ -48,7 +50,8 @@
   <div class="actions">
     <button onclick={newProject}>New</button>
     <button onclick={() => fileInput?.click()}>Import</button>
-    <button class="primary" onclick={exportJson}>Export JSON</button>
+    <button onclick={exportJson}>Export JSON</button>
+    <button class="primary" onclick={() => (exportOpen = true)}>⬇ Export Video</button>
   </div>
 
   <input
@@ -59,6 +62,8 @@
     hidden
   />
 </div>
+
+<ExportDialog open={exportOpen} onClose={() => (exportOpen = false)} />
 
 <style>
   .toolbar {
