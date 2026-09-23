@@ -23,6 +23,8 @@ export interface ProjectSettings {
   padding: number
   /** Morph animation duration in ms. */
   transitionMs: number
+  /** Aspect ratio preset id from export/resolutions.ts, e.g. '16:9'. */
+  aspectRatio: string
 }
 
 export interface Project {

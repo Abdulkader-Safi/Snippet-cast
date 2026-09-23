@@ -51,7 +51,7 @@
     <button onclick={newProject}>New</button>
     <button onclick={() => fileInput?.click()}>Import</button>
     <button onclick={exportJson}>Export JSON</button>
-    <button class="primary" onclick={() => (exportOpen = true)}>⬇ Export Video</button>
+    <button class="primary" onclick={() => (exportOpen = true)}>⬇ Export</button>
   </div>
 
   <input

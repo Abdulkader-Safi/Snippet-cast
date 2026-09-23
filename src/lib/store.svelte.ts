@@ -2,6 +2,7 @@
 import type { Project, ProjectSettings, Step } from './types'
 
 const STORAGE_KEY = 'snippetcast:project'
+const UI_KEY = 'snippetcast:ui'
 const SCHEMA_VERSION = 1
 
 function uid(): string {
@@ -17,6 +18,7 @@ const DEFAULT_SETTINGS: ProjectSettings = {
   fontSize: 22,
   padding: 32,
   transitionMs: 600,
+  aspectRatio: '16:9',
 }
 
 function demoSteps(): Step[] {
@@ -69,10 +71,29 @@ function loadFromStorage(): Project | null {
   }
 }
 
+/** Editor preferences that belong to this machine, not to the project file. */
+export interface UiPrefs {
+  vimMode: boolean
+  sidebarWidth: number
+}
+
+export const SIDEBAR_MIN = 300
+export const SIDEBAR_MAX = 760
+
+function loadUi(): UiPrefs {
+  const defaults: UiPrefs = { vimMode: false, sidebarWidth: 380 }
+  try {
+    return { ...defaults, ...JSON.parse(localStorage.getItem(UI_KEY) ?? '{}') }
+  } catch {
+    return defaults
+  }
+}
+
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 class SnippetCastStore {
   project = $state<Project>(loadFromStorage() ?? defaultProject())
+  ui = $state<UiPrefs>(loadUi())
   currentIndex = $state(0)
   isPlaying = $state(false)
   /**
@@ -148,6 +169,10 @@ class SnippetCastStore {
     this.project.settings = { ...this.project.settings, ...patch }
   }
 
+  setSidebarWidth(px: number) {
+    this.ui.sidebarWidth = Math.round(Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, px)))
+  }
+
   setName(name: string) {
     this.project.name = name
   }
@@ -201,6 +226,13 @@ $effect.root(() => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(store.project))
     } catch {
       // Ignore quota / serialization errors; persistence is best-effort.
+    }
+  })
+  $effect(() => {
+    try {
+      localStorage.setItem(UI_KEY, JSON.stringify(store.ui))
+    } catch {
+      // best-effort
     }
   })
 })

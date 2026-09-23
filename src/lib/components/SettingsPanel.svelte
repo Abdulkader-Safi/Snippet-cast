@@ -2,6 +2,7 @@
   import { store } from '../store.svelte'
   import { THEMES, LANGUAGES } from '../highlighter'
   import { BACKGROUNDS } from '../backgrounds'
+  import { RESOLUTIONS } from '../export/resolutions'
 
   const s = $derived(store.settings)
 </script>
@@ -24,6 +25,15 @@
       <select value={s.theme} onchange={(e) => store.updateSettings({ theme: e.currentTarget.value })}>
         {#each THEMES as t (t.id)}
           <option value={t.id}>{t.label}</option>
+        {/each}
+      </select>
+    </label>
+
+    <label class="full">
+      <span>Aspect ratio</span>
+      <select value={s.aspectRatio} onchange={(e) => store.updateSettings({ aspectRatio: e.currentTarget.value })}>
+        {#each RESOLUTIONS as r (r.id)}
+          <option value={r.id}>{r.label}</option>
         {/each}
       </select>
     </label>

@@ -2,8 +2,9 @@
   import { tick } from 'svelte'
   import { store } from '../store.svelte'
   import { getHighlighter } from '../highlighter'
-  import { RESOLUTIONS, resolutionById } from '../export/resolutions'
+  import { resolutionById } from '../export/resolutions'
   import { runExport, downloadBlob, estimateFrames, type ExportFormat } from '../export/exportVideo'
+  import { exportAnimatedSvg } from '../export/exportSvg'
   import { webCodecsAvailable } from '../export/sinks'
   import ExportStage from '../export/ExportStage.svelte'
 
@@ -13,16 +14,18 @@
   }
   let { open, onClose }: Props = $props()
 
-  const FORMATS: { id: ExportFormat; label: string; needsCodecs: boolean }[] = [
+  type Format = ExportFormat | 'svg'
+
+  const FORMATS: { id: Format; label: string; needsCodecs: boolean }[] = [
     { id: 'mp4', label: 'MP4', needsCodecs: true },
     { id: 'webm', label: 'WebM', needsCodecs: true },
     { id: 'gif', label: 'GIF', needsCodecs: false },
+    { id: 'svg', label: 'Animated SVG', needsCodecs: false },
   ]
 
   const canVideo = webCodecsAvailable()
 
-  let format = $state<ExportFormat>(canVideo ? 'mp4' : 'gif')
-  let resolutionId = $state('16:9')
+  let format = $state<Format>(canVideo ? 'mp4' : 'gif')
   let fps = $state(30)
 
   let status = $state<'idle' | 'rendering' | 'done' | 'error'>('idle')
@@ -35,8 +38,10 @@
   let stageEl = $state<HTMLDivElement>()
 
   // GIF gets downscaled and frame-rate-capped to keep file size sane.
+  const resolutionId = $derived(store.settings.aspectRatio)
   const res = $derived(resolutionById(resolutionId))
   const isGif = $derived(format === 'gif')
+  const isSvg = $derived(format === 'svg')
   const exportFps = $derived(isGif ? Math.min(fps, 15) : fps)
   const dims = $derived.by(() => {
     if (!isGif) return { width: res.width, height: res.height }
@@ -72,7 +77,15 @@
     }
     try {
       const highlighter = await getHighlighter()
-      const blob = await runExport({
+      const blob = cfg.format === 'svg'
+        ? await exportAnimatedSvg({
+            highlighter,
+            steps: store.steps,
+            settings: store.settings,
+            width: cfg.width,
+            height: cfg.height,
+          })
+        : await runExport({
         format: cfg.format,
         width: cfg.width,
         height: cfg.height,
@@ -116,9 +129,9 @@
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="overlay" onclick={close} role="presentation">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Export video" tabindex="-1">
+    <div class="dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Export" tabindex="-1">
       <div class="head">
-        <h2>Export video</h2>
+        <h2>Export</h2>
         <button class="x" onclick={close} disabled={status === 'rendering'}>✕</button>
       </div>
 
@@ -142,17 +155,12 @@
         {/if}
       </div>
 
-      <div class="field">
-        <span class="label">Aspect ratio</span>
-        <div class="chips">
-          {#each RESOLUTIONS as r (r.id)}
-            <button class="chip" class:active={resolutionId === r.id} onclick={() => (resolutionId = r.id)}>
-              {r.label}
-            </button>
-          {/each}
-        </div>
-      </div>
-
+      {#if isSvg}
+        <span class="note svg-note">
+          Vector file that loops forever. Plays in browsers, GitHub READMEs and docs sites. Social apps
+          don't accept SVG, so use MP4 there.
+        </span>
+      {:else}
       <div class="field">
         <span class="label">Frame rate</span>
         <div class="segments">
@@ -163,16 +171,19 @@
           <span class="note">GIF is capped at 15 fps and {dims.width}×{dims.height} to keep the file small.</span>
         {/if}
       </div>
+      {/if}
 
       <div class="summary">
-        {store.steps.length} steps · {dims.width}×{dims.height} · {exportFps} fps · ~{frameEstimate} frames
+        {res.label} (change it in Settings) · {store.steps.length} steps · {dims.width}×{dims.height}{isSvg
+          ? ''
+          : ` · ${exportFps} fps · ~${frameEstimate} frames`}
       </div>
 
       {#if status === 'rendering'}
         <div class="progress">
           <div class="bar" style:width="{pct}%"></div>
         </div>
-        <div class="progress-text">Rendering frames… {done}/{total} ({pct}%)</div>
+        <div class="progress-text">{isSvg ? 'Building SVG…' : 'Rendering frames…'} {done}/{total} ({pct}%)</div>
       {:else if status === 'done'}
         <div class="result ok">Done. Downloaded {format.toUpperCase()} · {fmtSize(resultSize)}</div>
       {:else if status === 'error'}
@@ -265,24 +276,9 @@
     cursor: not-allowed;
   }
 
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .chip {
-    padding: 7px 11px;
-    background: #1d1d25;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: #d1d5db;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 12px;
-  }
-  .chip.active {
-    border-color: #a855f7;
-    color: white;
-    background: #2a1f3d;
+  .svg-note {
+    margin: -6px 0 16px;
+    line-height: 1.5;
   }
 
   .note {

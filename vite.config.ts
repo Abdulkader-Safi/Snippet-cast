@@ -4,5 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Relative asset paths so the build also loads from file:// inside Electron.
+  base: "./",
   plugins: [svelte(), tailwindcss()],
 });
